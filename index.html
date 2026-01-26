@@ -25,6 +25,7 @@
     th { background: #f8f9fa; font-weight: 600; }
     .total { font-size: 1.2em; font-weight: bold; background: #e8f5e8; padding: 15px; border-radius: 6px; }
     .import-zone { background: #d4edda; border-left: 4px solid #28a745; }
+    #status { color: #28a745; font-weight: bold; }
     @media print { body { background: white; padding: 0; } .no-print { display: none !important; } }
     @media (max-width: 768px) { .container { margin: 0; border-radius: 0; } }
   </style>
@@ -48,190 +49,196 @@
     <!-- IMPORT RS CSV -->
     <div class="section import-zone">
       <h2>📥 Importer liste Radiospares</h2>
-      <p>Crée ta liste sur <a href="https://fr.rs-online.com" target="_blank">RS</a> → Export CSV → Glisse ici</p>
-      <input type="file" id="fileCSV" accept=".csv" style="padding: 10px;">
-      <button class="btn" onclick="importerCSV()">🚀 Importer dans devis</button>
-      <button class="btn btn-danger" onclick="viderPanier()">🗑️ Vider panier</button>
+      <p>Glisse ton CSV RS ici → Schneider Wiser OK !</p>
+      <input type="file" id="fileCSV" accept=".csv">
+      <div style="margin: 10px 0;">
+        <button class="btn" onclick="importerCSV()">🚀 Importer</button>
+        <button class="btn btn-danger" onclick="viderPanier()">🗑️ Vider panier</button>
+        <button class="btn btn-warning" onclick="reinitialiserApp()">🔄 Réinit tout</button>
+      </div>
+      <div id="status"></div>
     </div>
 
     <!-- MAIN D'OEUVRE -->
     <div class="section">
       <h2>👷 Main d'œuvre</h2>
-      <label>Heures pose: <input type="number" id="heuresPose" step="0.25" value="4.0" min="0"></label>
+      <label>Heures: <input type="number" id="heuresPose" step="0.25" value="4.0" min="0"></label>
       <label>Taux HT (€/h): <input type="number" id="tauxHoraire" step="0.01" value="45.00" min="0"></label>
     </div>
 
-    <!-- SOCIÉTÉ (CONFIG) -->
+    <!-- CONFIG SOCIÉTÉ -->
     <div class="section">
       <h2>🏢 Société</h2>
       <input type="text" id="newNom" placeholder="Nom société">
       <textarea id="newAdresse" rows="3" placeholder="Adresse&#10;12 rue des Circuits&#10;94000 Créteil"></textarea>
       <label>Logo: <input type="file" id="newLogo" accept="image/*"></label>
       <button class="btn" onclick="sauvegarderConfig()">💾 Sauvegarder</button>
-      <button class="btn btn-warning" onclick="reinitialiserApp()">🔄 Tout réinit</button>
     </div>
 
     <!-- PANIER -->
     <div class="section">
-      <h2>🛒 Panier matériel</h2>
+      <h2>🛒 Panier (<span id="comptePanier">0</span> articles)</h2>
       <table id="tableauPanier">
-        <thead><tr><th>Réf RS</th><th>Description</th><th>Marque</th><th>Qté</th><th>PU HT €</th><th>Total</th><th>Supp</th></tr></thead>
+        <thead><tr><th>Réf</th><th>Description</th><th>Marque</th><th>Qté</th><th>PU HT</th><th>Total</th><th></th></tr></thead>
         <tbody></tbody>
       </table>
     </div>
 
     <!-- TOTAUX -->
     <div class="section total" id="totaux">
-      Matériel HT: 0 € | MO: 0 € | <strong>TOTAL HT: 0 €</strong> | TVA 20%: 0 € | <strong>TTC: 0 €</strong>
+      Matériel: 0€ | MO: 0€ | HT: 0€ | TVA: 0€ | TTC: 0€
     </div>
 
     <!-- ACTIONS -->
     <div class="section">
-      <button class="btn" onclick="exporterCSV()">💾 Exporter CSV</button>
-      <button class="btn" onclick="imprimerFacture()" class="no-print">🖨️ Imprimer facture</button>
+      <button class="btn" onclick="exporterCSV()">💾 Export CSV</button>
+      <button class="btn no-print" onclick="imprimerFacture()">🖨️ Facture</button>
     </div>
   </div>
 
   <script>
-    // ÉTAT GLOBAL
+    // GLOBALS
     let panier = JSON.parse(localStorage.getItem('panierMELEC')) || [];
     let config = JSON.parse(localStorage.getItem('configEntreprise')) || {
-      nom: 'ÉLEC INSTALL SARL', adresse: '12 rue des Circuits\n94000 Créteil', tauxHoraire: 45.00, logo: ''
+      nom: 'ÉLEC INSTALL SARL', adresse: '12 rue des Circuits\n94000 Créteil', tauxHoraire: 45, logo: ''
     };
 
-    // PARSER CSV RS ROBUSTE
+    // PARSER CSV ADAPTÉ TON FICHIER RS (split espace fixe)
     function parserCSV(csvText) {
-      if (!csvText) return [];
-      const sep = csvText.includes(';') ? ';' : ',';
-      const lignes = csvText.split('\n').map(l => l.trim()).filter(l => l);
+      const status = document.getElementById('status');
+      if (!csvText) { status.textContent = 'Erreur: CSV vide'; return []; }
+      status.textContent = 'Parsing...';
+      
+      // Split lignes + nettoyage
+      const lignes = csvText.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('---'));
       const items = [];
-      lignes.slice(1).forEach((ligne, idx) => {
+      
+      lignes.slice(1).forEach((ligne, idx) => { // Skip header
         try {
-          const cols = ligne.split(new RegExp(`(?=(?:[^"]*"[^"]*")*[^"]*$)(${sep})`, 'g'))
-            .map(c => c.replace(/^["\s]+|["\s]+$/g, '').trim()).filter(c => c);
+          // Split par espaces multiples (format RS compact)
+          const cols = ligne.split(/\s{2,}/); // 2+ espaces
           if (cols.length < 9) return;
-          const refRS = cols[0] || '';
-          const desc = cols[5] || cols[6] || '';
-          const marque = cols[7] || '';
-          let prixStr = cols[8] || '0';
-          prixStr = prixStr.replace(/[€\sHT]+/gi, '').replace(',', '.');
+          
+          const refRS = cols[0].trim();
+          const desc = cols[5].trim();
+          const marque = cols[7].trim();
+          let prixStr = cols[8] ? cols[8].replace(/[€\s]/g, '').replace(',', '.') : '0';
           const puHT = parseFloat(prixStr) || 0;
-          if (!refRS || puHT <= 0 || items.some(item => item.ref === refRS)) return;
-          items.push({ ref: refRS, desc, marque, qte: 1, puHT });
-        } catch (e) { console.warn(`Ligne ${idx + 2} ignorée`); }
+          
+          if (refRS && puHT > 0 && !items.some(i => i.ref === refRS)) {
+            items.push({ ref: refRS, desc, marque, qte: 1, puHT });
+          }
+        } catch(e) { console.warn('Ligne', idx, ':', ligne); }
       });
+      
+      status.textContent = `${items.length} articles importés !`;
       return items;
     }
 
-    // IMPORT CSV
+    // IMPORT (bouton + listener)
     function importerCSV() {
       const file = document.getElementById('fileCSV').files[0];
-      if (!file) return alert('Choisis un CSV RS !');
+      if (!file) return document.getElementById('status').textContent = 'Choisis CSV !';
+      
       const reader = new FileReader();
-      reader.onload = e => {
-        panier = [...panier, ...parserCSV(e.target.result)];
+      reader.onload = function(e) {
+        const nouveaux = parserCSV(e.target.result);
+        panier.push(...nouveaux);
         localStorage.setItem('panierMELEC', JSON.stringify(panier));
         mettreAJourTableau();
+        document.getElementById('fileCSV').value = '';
       };
       reader.readAsText(file);
     }
+    document.getElementById('fileCSV').addEventListener('change', importerCSV);
 
-    // TABLEAU PANIER
+    // TABLEAU
     function mettreAJourTableau() {
+      document.getElementById('comptePanier').textContent = panier.length;
       const tbody = document.querySelector('#tableauPanier tbody');
       tbody.innerHTML = '';
       panier.forEach((item, i) => {
+        const totalLigne = item.qte * item.puHT;
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>${item.ref}</td>
           <td>${item.desc}</td>
           <td>${item.marque}</td>
-          <td><input type="number" value="${item.qte}" min="1" onchange="panier[${i}].qte=this.valueAsNumber; localStorage.setItem('panierMELEC',JSON.stringify(panier)); mettreAJourTableau(); mettreAJourTotaux();" style="width:60px;"></td>
-          <td>${item.puHT.toFixed(2)} €</td>
-          <td>${(item.qte * item.puHT).toFixed(2)} €</td>
-          <td><button class="btn btn-danger" onclick="panier.splice(${i},1); localStorage.setItem('panierMELEC',JSON.stringify(panier)); mettreAJourTableau(); mettreAJourTotaux();">✕</button></td>
+          <td><input type="number" value="${item.qte}" min="1" step="1" onchange="panier[${i}].qte = +this.value || 1; sauvegarderPanier(); mettreAJourTableau(); mettreAJourTotaux();" style="width: 60px;"></td>
+          <td>${item.puHT.toFixed(2)}</td>
+          <td>${totalLigne.toFixed(2)}</td>
+          <td><button class="btn btn-danger" onclick="supprimerItem(${i})" style="padding: 5px 10px; font-size: 0.9em;">✕</button></td>
         `;
         tbody.appendChild(tr);
       });
       mettreAJourTotaux();
     }
 
-    // TOTAUX
-    function mettreAJourTotaux() {
-      const materielHT = panier.reduce((sum, item) => sum + (item.qte * item.puHT), 0);
-      const heures = parseFloat(document.getElementById('heuresPose').value) || 0;
-      const taux = parseFloat(document.getElementById('tauxHoraire').value) || 0;
-      const moHT = heures * taux;
-      const totalHT = materielHT + moHT;
-      const tva = totalHT * 0.20;
-      const ttc = totalHT + tva;
-      document.getElementById('totaux').innerHTML = `
-        Matériel HT: ${materielHT.toFixed(2)} € | MO: ${moHT.toFixed(2)} € | 
-        <strong>TOTAL HT: ${totalHT.toFixed(2)} €</strong> | TVA 20%: ${tva.toFixed(2)} € | 
-        <strong>TTC: ${ttc.toFixed(2)} €</strong>
-      `;
-    }
+    // HELPERS
+    function sauvegarderPanier() { localStorage.setItem('panierMELEC', JSON.stringify(panier)); }
+    function supprimerItem(i) { panier.splice(i, 1); sauvegarderPanier(); mettreAJourTableau(); }
 
-    // VIDANGE / RÉINIT
+    // VIDANGE / RÉINIT ✅ FIXÉES
     function viderPanier() {
-      if (confirm('Vider panier ?')) {
+      if (confirm('Vider panier (' + panier.length + ' articles) ?')) {
         panier = [];
         localStorage.removeItem('panierMELEC');
+        document.getElementById('status').textContent = 'Panier vidé !';
         mettreAJourTableau();
       }
     }
     function reinitialiserApp() {
-      if (confirm('Réinitialiser tout ?')) {
-        panier = []; localStorage.removeItem('panierMELEC');
-        localStorage.removeItem('configEntreprise');
+      if (confirm('Réinitialiser TOUT (panier + config) ?')) {
+        localStorage.clear();
         location.reload();
       }
     }
 
-    // CONFIG SOCIÉTÉ
+    // TOTAUX
+    function mettreAJourTotaux() {
+      const materiel = panier.reduce((s, i) => s + i.qte * i.puHT, 0);
+      const heures = +document.getElementById('heuresPose').value || 0;
+      const taux = +document.getElementById('tauxHoraire').value || 0;
+      const mo = heures * taux;
+      const ht = materiel + mo;
+      const tva = ht * 0.2;
+      const ttc = ht + tva;
+      document.getElementById('totaux').innerHTML = 
+        `Matériel: ${materiel.toFixed(2)}€ | MO: ${mo.toFixed(2)}€ | <strong>HT: ${ht.toFixed(2)}€</strong> | TVA: ${tva.toFixed(2)}€ | <strong>TTC: ${ttc.toFixed(2)}€</strong>`;
+    }
+
+    // SOCIÉTÉ
     function majHeader() {
       document.getElementById('nomSoc').textContent = config.nom;
       document.getElementById('adresseSoc').textContent = config.adresse;
-      const logo = document.getElementById('logoSoc');
-      if (config.logo) {
-        logo.src = config.logo;
-        logo.style.display = 'block';
-      } else logo.style.display = 'none';
+      const img = document.getElementById('logoSoc');
+      img.src = config.logo || '';
+      img.style.display = config.logo ? 'block' : 'none';
     }
     function sauvegarderConfig() {
       config.nom = document.getElementById('newNom').value || config.nom;
       config.adresse = document.getElementById('newAdresse').value || config.adresse;
-      config.tauxHoraire = parseFloat(document.getElementById('tauxHoraire').value) || 45;
-      const logoFile = document.getElementById('newLogo').files[0];
-      if (logoFile) {
-        const reader = new FileReader();
-        reader.onload = e => {
-          config.logo = e.target.result;
-          localStorage.setItem('configEntreprise', JSON.stringify(config));
-          majHeader();
-        };
-        reader.readAsDataURL(logoFile);
+      config.tauxHoraire = +document.getElementById('tauxHoraire').value || 45;
+      const file = document.getElementById('newLogo').files[0];
+      if (file) {
+        const r = new FileReader();
+        r.onload = e => { config.logo = e.target.result; localStorage.setItem('configEntreprise', JSON.stringify(config)); majHeader(); };
+        r.readAsDataURL(file);
       } else {
         localStorage.setItem('configEntreprise', JSON.stringify(config));
         majHeader();
       }
-      document.getElementById('newNom').value = '';
-      document.getElementById('newAdresse').value = '';
     }
 
-    // EXPORT / IMPRESSION
+    // EXPORT / PRINT
     function exporterCSV() {
-      const csv = ['Ref,Desc,Marque,Qté,PU HT,Total',
-        ...panier.map(item => `${item.ref},"${item.desc}",${item.marque},${item.qte},${item.puHT},${item.qte*item.puHT}`)].join('\n');
-      const blob = new Blob([csv], { type: 'text/csv' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = 'devis_melec.csv'; a.click(); URL.revokeObjectURL(url);
+      const csv = ['Ref,Description,Marque,Qte,PU_HT,Total', ...panier.map(i => `${i.ref},"${i.desc}",${i.marque},${i.qte},${i.puHT},${i.qte*i.puHT}`)].join('\n');
+      const blob = new Blob([csv], {type: 'text/csv'});
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'devis_melec.csv'; a.click();
     }
     function imprimerFacture() { window.print(); }
 
-    // ÉVÉNEMENTS
-    document.getElementById('fileCSV').addEventListener('change', importerCSV);
+    // ÉVENTS
     document.getElementById('heuresPose').addEventListener('input', mettreAJourTotaux);
     document.getElementById('tauxHoraire').addEventListener('input', mettreAJourTotaux);
 
