@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Devis MELEC - Schneider / Legrand</title>
+  <title>Devis MELEC - RS Components</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Segoe UI', Arial, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
@@ -24,9 +24,8 @@
     th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
     th { background: #f8f9fa; font-weight: bold; }
     .total { font-size: 1.4em; font-weight: bold; color: #1a5fb4; text-align: right; margin-top: 15px; }
-    .facture-preview { background: #f8f9fa; padding: 20px; border-radius: 8px; margin-top: 20px; }
-    .modele { display: none; }
     .prof-tools { background: #fff3cd; border-left: 4px solid #ffc107; }
+    .import-zone { background: #d4edda; border-left: 4px solid #28a745; }
     @media (max-width: 768px) { .container { margin: 10px; border-radius: 8px; } }
   </style>
 </head>
@@ -34,161 +33,256 @@
 
 <div class="container">
 
-  <!-- EN-TÊTE FACTURE PERSONNALISABLE -->
+  <!-- EN-TÊTE SOCIÉTÉ -->
   <div class="header" id="header">
-    <img id="logo" src="https://via.placeholder.com/200x60/1a5fb4/ffffff?text=LOGO+ENTREPRISE" alt="Logo">
+    <img id="logo" src="https://via.placeholder.com/200x60/1a5fb4/ffffff?text=LOGO" alt="Logo">
     <h1 id="entrepriseNom">ÉLEC INSTALL SARL</h1>
     <p id="entrepriseInfo">12 rue des Circuits<br>94000 Créteil<br>SIRET : 123 456 789 00012 | Tél : 01 23 45 67 89</p>
   </div>
 
-  <!-- SCÉNARIO & CLIENT -->
+  <!-- PROJET & CLIENT -->
   <div class="section">
     <h2>📋 Projet & Client</h2>
-    <select id="scenario">
-      <option>Studio T2 complet (4 circuits)</option>
-      <option>TGBT local technique</option>
-      <option>Maison individuelle (8 circuits)</option>
-      <option>Local commercial</option>
-    </select>
-    <input type="text" id="client" placeholder="Nom du client (ex : M. Dupont)" value="M. Martin">
+    <input type="text" id="projet" placeholder="Nom du projet (ex : Installation studio T2)" value="Installation studio T2">
+    <input type="text" id="client" placeholder="Nom client (ex : M. Martin)" value="M. Martin">
   </div>
 
-  <!-- CATALOGUE RS Schneider/Legrand -->
+  <!-- IMPORT RS (NOUVEAU) -->
+  <div class="section import-zone">
+    <h2>📥 Importer liste Radiospares</h2>
+    <p><em>1. Crée liste sur <a href="https://fr.rs-online.com" target="_blank">RS</a> → 2. Export CSV → 3. Glisse ici</em></p>
+    <input type="file" id="importCSV" accept=".csv" style="width: 100%; padding: 10px;">
+    <div id="importPreview"></div>
+    <button class="btn" onclick="importerListeRS()" style="margin-top: 10px;">🚀 Importer devis</button>
+  </div>
+
+  <!-- AJOUT MANUEL -->
   <div class="section">
-    <h2>🛒 Matériel RS Components</h2>
+    <h2>➕ Ou ajouter manuellement</h2>
     <select id="ref">
-      <option value="schneider-acti9-16a" data-prix="8.50" data-marque="Schneider">Acti9 iC60N 16A C (8,50€)</option>
-      <option value="legrand-dx3-16a" data-prix="9.20" data-marque="Legrand">DX³ 16A C (9,20€)</option>
-      <option value="schneider-diff-40a" data-prix="45.00" data-marque="Schneider">Acti9 40A 30mA (45,00€)</option>
-      <option value="legrand-mosaic-16a" data-prix="14.57" data-marque="Legrand">Mosaic 16A (14,57€)</option>
-      <option value="schneider-coffret-24m" data-prix="32.80" data-marque="Schneider">Coffret 24 modules (32,80€)</option>
+      <option value="">Choisir matériel...</option>
+      <option value="schneider-acti9" data-prix="8.50" data-marque="Schneider">Acti9 iC60N 16A C (8.50€)</option>
+      <option value="legrand-dx3" data-prix="9.20" data-marque="Legrand">DX³ 16A C (9.20€)</option>
     </select>
-    <input type="number" id="qte" value="1" min="1" placeholder="Quantité">
-    <button class="btn" onclick="ajouterLigne()">➕ Ajouter au devis</button>
+    <input type="number" id="qteManuel" value="1" min="1" style="width: 100px; display: inline-block;">
+    <button class="btn" onclick="ajouterManuel()" style="display: inline-block;">➕ Ajouter</button>
   </div>
 
-  <!-- PANIER & FACTURATION AUTO -->
+  <!-- HEURES & MO -->
   <div class="section">
-    <h2>💰 Devis détaillé</h2>
+    <h2>⏱️ Main d'œuvre</h2>
+    <label>Heures estimées : <input type="number" id="heuresPose" value="4" min="0" step="0.5" style="width: 100px;"></label>
+    <div>Main d'œuvre : <strong id="coutMainOeuvre">180,00</strong> € HT</div>
+  </div>
+
+  <!-- DEVIS FINAL -->
+  <div class="section">
+    <h2>💰 Devis complet</h2>
     <table id="tableau">
-      <thead><tr><th>Matériel</th><th>Marque</th><th>Qté</th><th>Prix U. HT</th><th>Total HT</th></tr></thead>
+      <thead><tr><th>Article</th><th>Marque</th><th>Qté</th><th>Prix HT</th><th>Total</th></tr></thead>
       <tbody id="tbody"></tbody>
     </table>
-    
     <div class="total">
-      Sous-total HT : <span id="sousTotal">0,00</span> €<br>
+      Matériel HT : <span id="sousTotalMat">0,00</span> €<br>
+      Main d'œuvre : <span id="sousTotalMO">0,00</span> €<br>
+      <strong>SOUS-TOTAL HT : <span id="sousTotal">0,00</span> €</strong><br>
       TVA 20% : <span id="tva">0,00</span> €<br>
       <strong>TOTAL TTC : <span id="totalTTC">0,00</span> €</strong>
     </div>
-    
-    <button class="btn" onclick="imprimerFacture()">🖨️ Imprimer / PDF Facture</button>
-    <button class="btn btn-secondary" onclick="exporterCSV()">📊 Liste matériel CSV</button>
+    <button class="btn" onclick="imprimerFacture()">🖨️ Facture PDF</button>
+    <button class="btn btn-secondary" onclick="viderPanier()">🗑️ Vider panier</button>
   </div>
 
-  <!-- OUTILS PROF (optionnel) -->
+  <!-- CONFIG SOCIÉTÉ -->
   <div class="section prof-tools">
-    <h2>🔧 Mode Professeur</h2>
-    <input type="text" id="newEntreprise" placeholder="Nom entreprise (ex : ÉLEC INSTALL SARL)">
-    <input type="url" id="newLogo" placeholder="URL logo (ex : https://drive.google.com/...)" value="https://via.placeholder.com/200x60/1a5fb4/ffffff?text=LOGO">
-    <button class="btn" onclick="sauvegarderConfig()">💾 Sauvegarder config entreprise</button>
-    <p><em>Partage ce lien avec tes élèves !</em></p>
+    <h2>🏢 Société & Tarifs</h2>
+    <input type="text" id="newEntreprise" placeholder="Nom société">
+    <textarea id="newAdresse" rows="3" placeholder="Adresse&#10;Rue, Code postal, Ville"></textarea>
+    <input type="url" id="newLogo" placeholder="URL logo">
+    <label>Taux horaire HT (€) : <input type="number" id="tauxHoraire" step="0.01" value="45"></label>
+    <button class="btn" onclick="sauvegarderConfig()">💾 Sauvegarder</button>
   </div>
 
 </div>
 
 <script>
-  // Données panier
-  let panier = JSON.parse(localStorage.getItem('panierMELEC')) || [];
-  let config = JSON.parse(localStorage.getItem('configEntreprise')) || {
-    nom: 'ÉLEC INSTALL SARL',
-    logo: 'https://via.placeholder.com/200x60/1a5fb4/ffffff?text=LOGO+ENTREPRISE',
-    info: '12 rue des Circuits\n94000 Créteil\nSIRET : 123 456 789 00012 | Tél : 01 23 45 67 89'
-  };
+let panier = JSON.parse(localStorage.getItem('panierMELEC')) || [];
+let config = JSON.parse(localStorage.getItem('configEntreprise')) || {
+  nom: 'ÉLEC INSTALL SARL',
+  adresse: '12 rue des Circuits\n94000 Créteil\nSIRET : 12345678900012',
+  logo: 'https://via.placeholder.com/200x60/1a5fb4/ffffff?text=LOGO',
+  tauxHoraire: 45.00
+};
+let listeImportee = [];
 
-  // Charger config au démarrage
+// Initialisation
+document.getElementById('entrepriseNom').textContent = config.nom;
+document.getElementById('logo').src = config.logo;
+document.getElementById('entrepriseInfo').textContent = config.adresse;
+document.getElementById('newEntreprise').value = config.nom;
+document.getElementById('newAdresse').value = config.adresse;
+document.getElementById('newLogo').value = config.logo;
+document.getElementById('tauxHoraire').value = config.tauxHoraire;
+
+document.getElementById('heuresPose').addEventListener('input', mettreAJourTableau);
+mettreAJourTableau();
+
+// IMPORT CSV RS
+document.getElementById('importCSV').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    parserCSV(e.target.result);
+  };
+  reader.readAsText(file, 'ISO-8859-1');
+});
+
+function parserCSV(csv) {
+  const lignes = csv.split('\n').map(l => l.split(/;(?! )/)); // Séparateur intelligent
+  listeImportee = [];
+  const preview = document.getElementById('importPreview');
+  preview.innerHTML = `<h4>✅ ${lignes.length-1} articles RS :</h4>`;
+
+  lignes.slice(1).forEach((ligne, i) => {
+    if (ligne.length < 3) return;
+    const ref = ligne[0]?.trim() || '';
+    const libelle = ligne[1]?.trim() || 'Article';
+    const prixStr = ligne[2]?.replace(/[€\s,]/g, '').replace('.', ',');
+    const prix = parseFloat(prixStr.replace(',', '.')) || 0;
+
+    if (ref && prix > 0) {
+      listeImportee.push({ ref, marque: 'RS', libelle, prix, qte: 1 });
+      preview.innerHTML += `<div style="padding:8px;border-bottom:1px solid #ddd;">${ref} - ${libelle} → ${prix.toFixed(2)}€</div>`;
+    }
+  });
+}
+
+function importerListeRS() {
+  if (!listeImportee.length) return alert('Importe CSV d\'abord !');
+  panier.push(...listeImportee);
+  alert(`✅ ${listeImportee.length} articles importés !`);
+  document.getElementById('importPreview').innerHTML = '';
+  document.getElementById('importCSV').value = '';
+  listeImportee = [];
+  mettreAJourTableau();
+}
+
+function ajouterManuel() {
+  const select = document.getElementById('ref');
+  const option = select.options[select.selectedIndex];
+  if (!option.dataset.prix) return alert('Choisis un article !');
+  
+  panier.push({
+    ref: option.value,
+    marque: option.dataset.marque,
+    libelle: option.textContent.replace(/ *\([^)]*\)/, ''),
+    prix: parseFloat(option.dataset.prix),
+    qte: parseInt(document.getElementById('qteManuel').value) || 1
+  });
+  document.getElementById('qteManuel').value = 1;
+  mettreAJourTableau();
+}
+
+function mettreAJourTableau() {
+  const tbody = document.getElementById('tbody');
+  tbody.innerHTML = '';
+  
+  let totalMat = 0;
+  panier.forEach((ligne, i) => {
+    const totalLigne = ligne.prix * ligne.qte;
+    totalMat += totalLigne;
+    tbody.innerHTML += `
+      <tr>
+        <td>${ligne.libelle}</td>
+        <td>${ligne.marque}</td>
+        <td>${ligne.qte}</td>
+        <td>${ligne.prix.toFixed(2)}€</td>
+        <td>${totalLigne.toFixed(2)}€</td>
+      </tr>`;
+  });
+
+  const heures = parseFloat(document.getElementById('heuresPose').value) || 0;
+  const totalMO = heures * config.tauxHoraire;
+  const sousTotal = totalMat + totalMO;
+  const tva = sousTotal * 0.20;
+  const totalTTC = sousTotal + tva;
+
+  document.getElementById('sousTotalMat').textContent = totalMat.toFixed(2);
+  document.getElementById('sousTotalMO').textContent = totalMO.toFixed(2);
+  document.getElementById('sousTotal').textContent = sousTotal.toFixed(2);
+  document.getElementById('tva').textContent = tva.toFixed(2);
+  document.getElementById('totalTTC').textContent = totalTTC.toFixed(2);
+  document.getElementById('coutMainOeuvre').textContent = totalMO.toFixed(2);
+
+  localStorage.setItem('panierMELEC', JSON.stringify(panier));
+}
+
+function sauvegarderConfig() {
+  config.nom = document.getElementById('newEntreprise').value;
+  config.adresse = document.getElementById('newAdresse').value;
+  config.logo = document.getElementById('newLogo').value;
+  config.tauxHoraire = parseFloat(document.getElementById('tauxHoraire').value) || 45;
+  
   document.getElementById('entrepriseNom').textContent = config.nom;
   document.getElementById('logo').src = config.logo;
-  document.getElementById('entrepriseInfo').textContent = config.info;
-  document.getElementById('newEntreprise').value = config.nom;
-  document.getElementById('newLogo').value = config.logo;
+  document.getElementById('entrepriseInfo').textContent = config.adresse;
+  
+  localStorage.setItem('configEntreprise', JSON.stringify(config));
+  alert('✅ Société mise à jour !');
+  mettreAJourTableau();
+}
 
-  // Mettre à jour tableau
-  function mettreAJourTableau() {
-    const tbody = document.getElementById('tbody');
-    tbody.innerHTML = '';
-    let sousTotal = 0;
+function imprimerFacture() {
+  if (!panier.length) return alert('Panier vide !');
+  const projet = document.getElementById('projet').value || 'Non spécifié';
+  const client = document.getElementById('client').value || 'Non spécifié';
+  
+  const win = window.open('', '_blank');
+  win.document.write(`
+    <html><head><title>Facture ${projet}</title>
+    <style>body{font-family:Arial;margin:40px;}table{width:100%;border-collapse:collapse;}
+    th{background:#1a5fb4;color:white;padding:12px;}td{padding:8px;border-bottom:1px solid #ddd;}
+    .total{font-size:20px;font-weight:bold;text-align:right;margin:20px 0;}</style></head>
+    <body>
+      <div style="text-align:center;margin-bottom:40px;">
+        <img src="${config.logo}" style="max-height:60px;"><br>
+        <h1 style="color:#1a5fb4;">${config.nom}</h1>
+        <div>${config.adresse.replace(/\n/g,'<br>')}</div>
+      </div>
+      <div style="background:#f8f9fa;padding:20px;margin-bottom:20px;">
+        <h2>📋 PROJET</h2>
+        <p><strong>Projet :</strong> ${projet}</p>
+        <p><strong>Client :</strong> ${client}</p>
+        <p><strong>Date :</strong> ${new Date().toLocaleDateString('fr-FR')}</p>
+      </div>
+      <table>
+        <tr><th>Article</th><th>Marque</th><th>Qté</th><th>Prix HT</th><th>Total</th></tr>
+        ${panier.map(l=>`<tr><td>${l.libelle}</td><td>${l.marque}</td><td>${l.qte}</td><td>${l.prix.toFixed(2)}€</td><td>${(l.prix*l.qte).toFixed(2)}€</td></tr>`).join('')}
+      </table>
+      <div class="total">
+        Matériel : ${document.getElementById('sousTotalMat').textContent}€<br>
+        Main d'œuvre : ${document.getElementById('sousTotalMO').textContent}€<br>
+        <hr style="border:2px solid #1a5fb4;">
+        SOUS-TOTAL HT : ${document.getElementById('sousTotal').textContent}€<br>
+        TVA 20% : ${document.getElementById('tva').textContent}€<br>
+        <strong>TOTAL TTC : ${document.getElementById('totalTTC').textContent}€</strong>
+      </div>
+      <div style="background:#e9ecef;padding:15px;font-size:14px;">
+        <strong>Conditions :</strong> NFC 15-100 | Paiement 30 jours | Valable 30 jours
+      </div>
+    </body></html>`);
+  win.document.close();
+  win.print();
+}
 
-    panier.forEach((ligne, i) => {
-      const totalLigne = ligne.prix * ligne.qte;
-      sousTotal += totalLigne;
-      tbody.innerHTML += `
-        <tr>
-          <td>${ligne.libelle}</td>
-          <td>${ligne.marque}</td>
-          <td>${ligne.qte}</td>
-          <td>${ligne.prix.toFixed(2)} €</td>
-          <td>${totalLigne.toFixed(2)} €</td>
-        </tr>`;
-    });
-
-    const tva = sousTotal * 0.20;
-    const totalTTC = sousTotal + tva;
-    
-    document.getElementById('sousTotal').textContent = sousTotal.toFixed(2);
-    document.getElementById('tva').textContent = tva.toFixed(2);
-    document.getElementById('totalTTC').textContent = totalTTC.toFixed(2);
-
-    localStorage.setItem('panierMELEC', JSON.stringify(panier));
-  }
-
-  // Ajouter ligne
-  function ajouterLigne() {
-    const select = document.getElementById('ref');
-    const option = select.options[select.selectedIndex];
-    const ref = option.value;
-    const libelle = option.textContent.replace(/ *\([^)]*\)/, '');
-    const prix = parseFloat(option.dataset.prix);
-    const marque = option.dataset.marque;
-    const qte = parseInt(document.getElementById('qte').value) || 1;
-
-    panier.push({ ref, libelle, prix, marque, qte });
-    document.getElementById('qte').value = 1;
+function viderPanier() {
+  if (confirm('Vider le panier ?')) {
+    panier = [];
+    localStorage.removeItem('panierMELEC');
     mettreAJourTableau();
   }
-
-  // Sauvegarder config entreprise
-  function sauvegarderConfig() {
-    config.nom = document.getElementById('newEntreprise').value;
-    config.logo = document.getElementById('newLogo').value;
-    config.info = '12 rue des Circuits\n94000 Créteil\nSIRET : 123 456 789 00012 | Tél : 01 23 45 67 89';
-    
-    document.getElementById('entrepriseNom').textContent = config.nom;
-    document.getElementById('logo').src = config.logo;
-    
-    localStorage.setItem('configEntreprise', JSON.stringify(config));
-    alert('✅ Config sauvegardée ! Actualise la page.');
-  }
-
-  // Imprimer facture
-  function imprimerFacture() {
-    if (panier.length === 0) return alert('Ajoute du matériel !');
-    window.print();
-  }
-
-  // Exporter CSV
-  function exporterCSV() {
-    let csv = 'Réf RS;Matériel;Marque;Qté;Prix HT;Total HT\n';
-    panier.forEach(l => {
-      csv += `"${l.ref}";"${l.libelle}";"${l.marque}";${l.qte};${l.prix.toFixed(2)};${(l.prix*l.qte).toFixed(2)}\n`;
-    });
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'liste_materiel_melec.csv'; a.click();
-  }
-
-  // Initialiser
-  mettreAJourTableau();
+}
 </script>
 
 </body>
