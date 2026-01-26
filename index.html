@@ -128,41 +128,40 @@ let config = JSON.parse(localStorage.getItem('configEntreprise')) || {
 
 // PARSER CSV ROBUSTE (tous formats RS)
 function parserCSV(csv) {
-  const lignes = csv.split('\n').slice(1);
+  const lignes = csv.split('\n').slice(1); // on saute l’en-tête
   const items = [];
-  
+
   lignes.forEach(ligne => {
     if (!ligne.trim()) return;
-    
-    // Détection automatique séparateur (; ou ,)
-    const sep = ligne.includes(';') ? ';' : ',';
-    const cols = ligne.split(sep).map(c => c.trim().replace(/"/g, ''));
-    
-    // Mapping intelligent colonnes RS (formats variables)
-    let ref = '', desc = '', marque = '', prix = 0;
-    
-    // Format 1: Ref;Description;Marque;Prix
-    if (cols.length >= 4) {
-      ref = cols[0];
-      desc = cols[1];
-      marque = cols[2];
-      prix = parseFloat(cols[3].replace(',', '.')) || 0;
-    }
-    // Format 2: Ref;Description;Prix;(pas marque)
-    else if (cols.length >= 3) {
-      ref = cols[0];
-      desc = cols[1];
-      marque = 'RS';
-      prix = parseFloat(cols[2].replace(',', '.')) || 0;
-    }
-    
-    if (ref && prix > 0) {
-      items.push({ ref, desc, marque, qte: 1, puHT: prix });
+
+    // Séparateur CSV de RS : virgule
+    let cols = ligne.split(',').map(c => c.trim());
+
+    // On enlève les guillemets autour des champs
+    cols = cols.map(c => c.replace(/^"(.*)"$/, '$1'));
+
+    // On vérifie qu’on a au moins 10 colonnes (format RS)
+    if (cols.length < 10) return;
+
+    const ref = cols[0];                  // "RS Stock No"
+    const desc = cols[5];                 // "Description"
+    const marque = cols[7];               // "Manufacturer name"
+    const prix = parseFloat(cols[8]);     // "Unit Price"
+
+    if (ref && !isNaN(prix)) {
+      items.push({
+        ref,
+        desc,
+        marque,
+        qte: 1,
+        puHT: prix
+      });
     }
   });
-  
+
   return items;
 }
+
 
 // PRÉVISUALISATION CSV
 document.getElementById('importCSV').addEventListener('change', function(e) {
