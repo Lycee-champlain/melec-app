@@ -550,7 +550,10 @@
                 address: "15 Rue de l'Électricité, 75015 Paris",
                 siret: "123 456 789 00012",
                 phone: "01 23 45 67 89",
-                email: "contact@elecpro.fr"
+                email: "contact@elecpro.fr",
+                color: "#0066ff",
+                colorLight: "#e6f0ff",
+                initials: "EP"
             },
             {
                 id: 2,
@@ -559,7 +562,10 @@
                 address: "42 Avenue des Watts, 69002 Lyon",
                 siret: "234 567 890 00023",
                 phone: "04 56 78 90 12",
-                email: "contact@wattsolutions.fr"
+                email: "contact@wattsolutions.fr",
+                color: "#ff6b35",
+                colorLight: "#fff0eb",
+                initials: "WS"
             },
             {
                 id: 3,
@@ -568,7 +574,10 @@
                 address: "88 Boulevard du Courant, 13008 Marseille",
                 siret: "345 678 901 00034",
                 phone: "04 91 23 45 67",
-                email: "contact@powerinstall.fr"
+                email: "contact@powerinstall.fr",
+                color: "#00c853",
+                colorLight: "#e6f9ef",
+                initials: "PI"
             },
             {
                 id: 4,
@@ -577,7 +586,10 @@
                 address: "33 Rue des LED, 44000 Nantes",
                 siret: "456 789 012 00045",
                 phone: "02 40 12 34 56",
-                email: "contact@lumieretech.fr"
+                email: "contact@lumieretech.fr",
+                color: "#7b1fa2",
+                colorLight: "#f3e5f5",
+                initials: "LT"
             }
         ];
 
@@ -841,269 +853,195 @@
                 const tvaMORate = parseFloat(document.getElementById('tvaMO').value);
                 const tvaMaterielRate = parseFloat(document.getElementById('tvaMateriel').value);
                 
-                // Calculs
+                // Calculs détaillés
                 const totalMaterielHT = materials.reduce((sum, m) => sum + (m.prix * m.quantity), 0);
                 const tvaMateriel = totalMaterielHT * (tvaMaterielRate / 100);
                 const totalMOHT = tauxHoraire * heuresMO;
                 const tvaMO = totalMOHT * (tvaMORate / 100);
-                const totalTTC = totalMaterielHT + tvaMateriel + totalMOHT + tvaMO;
+                const totalHT = totalMaterielHT + totalMOHT;
+                const totalTVA = tvaMateriel + tvaMO;
+                const totalTTC = totalHT + totalTVA;
                 
-                // Encoder le logo en base64 pour l'inclure dans le document
-                const logoSvg = selectedCompany.logo;
-                const logoBase64 = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(logoSvg)));
+                // Numéro de facture
+                const invoiceNum = 'FAC-' + new Date().getFullYear() + '-' + Date.now().toString().slice(-6);
+                const invoiceDate = new Date().toLocaleDateString('fr-FR', { 
+                    year: 'numeric', month: 'long', day: 'numeric' 
+                });
                 
-                // Générer le tableau HTML
-                const tableRows = materials.map(m => `
-                    <tr>
-                        <td style="padding: 12px 8px; border-bottom: 1px solid #e0e0e0;">${m.name}</td>
-                        <td style="padding: 12px 8px; border-bottom: 1px solid #e0e0e0; text-align: center;">${m.manufacturer || '-'}</td>
-                        <td style="padding: 12px 8px; border-bottom: 1px solid #e0e0e0; text-align: center; font-family: monospace; font-size: 10pt;">${m.ref}</td>
-                        <td style="padding: 12px 8px; border-bottom: 1px solid #e0e0e0; text-align: center; font-weight: 600;">${m.quantity}</td>
-                        <td style="padding: 12px 8px; border-bottom: 1px solid #e0e0e0; text-align: right; font-family: Arial;">${m.prix.toFixed(2)} €</td>
-                        <td style="padding: 12px 8px; border-bottom: 1px solid #e0e0e0; text-align: right; font-weight: 600; font-family: Arial;">${(m.prix * m.quantity).toFixed(2)} €</td>
+                // Couleur de l'entreprise
+                const companyColor = selectedCompany.color || '#0066ff';
+                const companyColorLight = selectedCompany.colorLight || '#e6f0ff';
+                const companyInitials = selectedCompany.initials || selectedCompany.name.substring(0, 2).toUpperCase();
+                
+                // Générer le tableau des articles
+                const tableRows = materials.map((m, index) => `
+                    <tr style="background-color: ${index % 2 === 0 ? '#ffffff' : '#f8f9fa'};">
+                        <td style="padding: 10px 8px; border-bottom: 1px solid #dee2e6; font-size: 10pt;">${m.name}</td>
+                        <td style="padding: 10px 8px; border-bottom: 1px solid #dee2e6; text-align: center; font-size: 9pt; color: #666;">${m.manufacturer || '-'}</td>
+                        <td style="padding: 10px 8px; border-bottom: 1px solid #dee2e6; text-align: center; font-family: 'Courier New', monospace; font-size: 9pt;">${m.ref}</td>
+                        <td style="padding: 10px 8px; border-bottom: 1px solid #dee2e6; text-align: center; font-weight: bold;">${m.quantity}</td>
+                        <td style="padding: 10px 8px; border-bottom: 1px solid #dee2e6; text-align: right; font-family: Arial;">${m.prix.toFixed(2)} €</td>
+                        <td style="padding: 10px 8px; border-bottom: 1px solid #dee2e6; text-align: right; font-weight: bold; font-family: Arial;">${(m.prix * m.quantity).toFixed(2)} €</td>
                     </tr>
                 `).join('');
                 
-                // Créer le document HTML professionnel qui s'ouvrira dans Word
-                const htmlContent = `
-<!DOCTYPE html>
+                // Document HTML optimisé pour Word
+                const htmlContent = `<!DOCTYPE html>
 <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
 <head>
-    <meta charset='utf-8'>
-    <title>Facture ${selectedCompany.name}</title>
-    <style>
-        @page {
-            size: A4;
-            margin: 2cm;
-        }
-        body { 
-            font-family: 'Calibri', 'Arial', sans-serif; 
-            margin: 0;
-            padding: 0;
-            color: #333;
-            line-height: 1.4;
-        }
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 40px;
-            padding-bottom: 20px;
-            border-bottom: 3px solid #0066ff;
-        }
-        .company-info {
-            flex: 1;
-        }
-        .logo-container {
-            width: 100px;
-            height: 100px;
-            margin-left: 20px;
-        }
-        .company-name {
-            font-size: 22pt;
-            font-weight: bold;
-            color: #0066ff;
-            margin: 0 0 8px 0;
-        }
-        .company-details {
-            font-size: 9pt;
-            color: #666;
-            line-height: 1.6;
-        }
-        .invoice-title {
-            text-align: center;
-            margin: 30px 0;
-        }
-        .invoice-title h1 {
-            font-size: 28pt;
-            font-weight: bold;
-            color: #0066ff;
-            margin: 0 0 10px 0;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-        }
-        .invoice-meta {
-            text-align: center;
-            font-size: 10pt;
-            color: #666;
-            margin-bottom: 5px;
-        }
-        .client-section {
-            background: #f8f9fa;
-            padding: 15px 20px;
-            border-left: 4px solid #0066ff;
-            margin: 30px 0;
-        }
-        .client-label {
-            font-size: 9pt;
-            color: #666;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 5px;
-        }
-        .client-name {
-            font-size: 12pt;
-            font-weight: bold;
-            color: #333;
-        }
-        table { 
-            width: 100%; 
-            border-collapse: collapse; 
-            margin: 30px 0;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
-        thead {
-            background: linear-gradient(135deg, #0066ff 0%, #0099ff 100%);
-        }
-        th { 
-            color: white; 
-            padding: 14px 8px;
-            text-align: left; 
-            font-weight: 600;
-            font-size: 9pt;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        th.center { text-align: center; }
-        th.right { text-align: right; }
-        td { 
-            padding: 12px 8px;
-            border-bottom: 1px solid #e0e0e0;
-            font-size: 10pt;
-        }
-        tbody tr:hover {
-            background: #f8f9fa;
-        }
-        .totaux-section {
-            margin-top: 40px;
-            border-top: 2px solid #e0e0e0;
-            padding-top: 20px;
-        }
-        .totaux-row {
-            display: flex;
-            justify-content: flex-end;
-            padding: 8px 0;
-            font-size: 11pt;
-        }
-        .totaux-label {
-            width: 250px;
-            text-align: right;
-            padding-right: 30px;
-            color: #666;
-        }
-        .totaux-value {
-            width: 120px;
-            text-align: right;
-            font-weight: 600;
-            font-family: Arial;
-        }
-        .total-final {
-            margin-top: 15px;
-            padding-top: 15px;
-            border-top: 2px solid #0066ff;
-        }
-        .total-final .totaux-label {
-            font-size: 14pt;
-            font-weight: bold;
-            color: #0066ff;
-        }
-        .total-final .totaux-value {
-            font-size: 16pt;
-            font-weight: bold;
-            color: #0066ff;
-        }
-        .footer {
-            margin-top: 60px;
-            padding-top: 20px;
-            border-top: 1px solid #e0e0e0;
-            text-align: center;
-            font-size: 8pt;
-            color: #999;
-        }
-    </style>
+<meta charset='utf-8'>
+<meta name="ProgId" content="Word.Document">
+<meta name="Generator" content="MELEC-PRO">
+<title>Facture ${invoiceNum}</title>
+<!--[if gte mso 9]>
+<xml>
+<w:WordDocument>
+<w:View>Print</w:View>
+<w:Zoom>100</w:Zoom>
+</w:WordDocument>
+</xml>
+<![endif]-->
+<style>
+@page { size: A4; margin: 1.5cm 2cm; }
+body { font-family: Calibri, Arial, sans-serif; font-size: 11pt; color: #333; line-height: 1.4; margin: 0; padding: 0; }
+table { border-collapse: collapse; }
+</style>
 </head>
 <body>
-    <div class="header">
-        <div class="company-info">
-            <div class="company-name">${selectedCompany.name}</div>
-            <div class="company-details">
+
+<!-- EN-TÊTE -->
+<table width="100%" style="margin-bottom: 30px;">
+<tr>
+<td width="70%" style="vertical-align: top;">
+    <table cellpadding="0" cellspacing="0">
+    <tr>
+        <td style="width: 60px; height: 60px; background-color: ${companyColor}; text-align: center; vertical-align: middle;">
+            <span style="color: white; font-size: 22pt; font-weight: bold; font-family: Arial;">${companyInitials}</span>
+        </td>
+        <td style="padding-left: 15px; vertical-align: top;">
+            <div style="font-size: 18pt; font-weight: bold; color: ${companyColor}; margin-bottom: 5px;">${selectedCompany.name}</div>
+            <div style="font-size: 9pt; color: #666; line-height: 1.6;">
                 ${selectedCompany.address}<br>
-                SIRET: ${selectedCompany.siret}<br>
-                Tél: ${selectedCompany.phone}<br>
-                Email: ${selectedCompany.email}
+                Tél: ${selectedCompany.phone} | Email: ${selectedCompany.email}<br>
+                SIRET: ${selectedCompany.siret}
             </div>
-        </div>
-        <div class="logo-container">
-            <img src="${logoBase64}" alt="${selectedCompany.name}" width="100" height="100">
-        </div>
-    </div>
-    
-    <div class="invoice-title">
-        <h1>Facture</h1>
-        <div class="invoice-meta">N° FAC-${Date.now().toString().slice(-8)}</div>
-        <div class="invoice-meta">Date: ${new Date().toLocaleDateString('fr-FR', { 
-            year: 'numeric', month: 'long', day: 'numeric' 
-        })}</div>
-    </div>
-    
-    <div class="client-section">
-        <div class="client-label">Client</div>
-        <div class="client-name">${prenom} ${nom}</div>
-    </div>
-    
-    <table>
-        <thead>
-            <tr>
-                <th>Désignation</th>
-                <th class="center">Fabricant</th>
-                <th class="center">Référence</th>
-                <th class="center">Qté</th>
-                <th class="right">P.U. HT</th>
-                <th class="right">Total HT</th>
-            </tr>
-        </thead>
-        <tbody>
-            ${tableRows}
-        </tbody>
+        </td>
+    </tr>
     </table>
-    
-    <div class="totaux-section">
-        <div class="totaux-row">
-            <div class="totaux-label">Sous-total matériel HT</div>
-            <div class="totaux-value">${totalMaterielHT.toFixed(2)} €</div>
-        </div>
-        <div class="totaux-row">
-            <div class="totaux-label">Main d'œuvre (${heuresMO}h × ${tauxHoraire.toFixed(2)} €/h)</div>
-            <div class="totaux-value">${totalMOHT.toFixed(2)} €</div>
-        </div>
-        <div class="totaux-row">
-            <div class="totaux-label">TVA Matériel (${tvaMaterielRate}%)</div>
-            <div class="totaux-value">${tvaMateriel.toFixed(2)} €</div>
-        </div>
-        <div class="totaux-row">
-            <div class="totaux-label">TVA Main d'œuvre (${tvaMORate}%)</div>
-            <div class="totaux-value">${tvaMO.toFixed(2)} €</div>
-        </div>
-        <div class="totaux-row total-final">
-            <div class="totaux-label">TOTAL TTC</div>
-            <div class="totaux-value">${totalTTC.toFixed(2)} €</div>
+</td>
+<td width="30%" style="vertical-align: top; text-align: right;">
+    <div style="background-color: ${companyColor}; color: white; padding: 15px 20px; display: inline-block;">
+        <div style="font-size: 20pt; font-weight: bold; letter-spacing: 2px;">FACTURE</div>
+    </div>
+    <div style="margin-top: 10px; font-size: 10pt; color: #666;">
+        <strong>N° ${invoiceNum}</strong><br>
+        Date: ${invoiceDate}
+    </div>
+</td>
+</tr>
+</table>
+
+<!-- LIGNE SÉPARATRICE -->
+<div style="height: 3px; background-color: ${companyColor}; margin: 20px 0;"></div>
+
+<!-- SECTION CLIENT -->
+<table width="100%" style="margin-bottom: 30px;">
+<tr>
+<td width="50%">
+    <div style="background-color: ${companyColorLight}; border-left: 4px solid ${companyColor}; padding: 15px;">
+        <div style="font-size: 8pt; color: #666; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px;">Facturer à</div>
+        <div style="font-size: 14pt; font-weight: bold; color: #333;">${prenom} ${nom}</div>
+    </div>
+</td>
+<td width="50%" style="padding-left: 20px;">
+    <table style="font-size: 10pt;">
+        <tr><td style="padding: 3px 10px 3px 0; color: #666;">Conditions de paiement:</td><td style="font-weight: bold;">30 jours</td></tr>
+        <tr><td style="padding: 3px 10px 3px 0; color: #666;">Mode de paiement:</td><td style="font-weight: bold;">Virement bancaire</td></tr>
+    </table>
+</td>
+</tr>
+</table>
+
+<!-- TABLEAU DES ARTICLES -->
+<table width="100%" style="margin-bottom: 20px; border: 1px solid #dee2e6;">
+<thead>
+<tr style="background-color: ${companyColor};">
+    <th style="padding: 12px 8px; text-align: left; color: white; font-weight: 600; font-size: 9pt; text-transform: uppercase; border: none;">Désignation</th>
+    <th style="padding: 12px 8px; text-align: center; color: white; font-weight: 600; font-size: 9pt; text-transform: uppercase; border: none;">Fabricant</th>
+    <th style="padding: 12px 8px; text-align: center; color: white; font-weight: 600; font-size: 9pt; text-transform: uppercase; border: none;">Référence</th>
+    <th style="padding: 12px 8px; text-align: center; color: white; font-weight: 600; font-size: 9pt; text-transform: uppercase; border: none;">Qté</th>
+    <th style="padding: 12px 8px; text-align: right; color: white; font-weight: 600; font-size: 9pt; text-transform: uppercase; border: none;">P.U. HT</th>
+    <th style="padding: 12px 8px; text-align: right; color: white; font-weight: 600; font-size: 9pt; text-transform: uppercase; border: none;">Total HT</th>
+</tr>
+</thead>
+<tbody>
+${tableRows}
+<!-- LIGNE MAIN D'ŒUVRE -->
+<tr style="background-color: #f8f9fa;">
+    <td style="padding: 10px 8px; border-bottom: 1px solid #dee2e6; font-size: 10pt; font-style: italic;">Main d'œuvre - Installation électrique</td>
+    <td style="padding: 10px 8px; border-bottom: 1px solid #dee2e6; text-align: center; font-size: 9pt; color: #666;">-</td>
+    <td style="padding: 10px 8px; border-bottom: 1px solid #dee2e6; text-align: center; font-family: 'Courier New', monospace; font-size: 9pt;">MO-ELEC</td>
+    <td style="padding: 10px 8px; border-bottom: 1px solid #dee2e6; text-align: center; font-weight: bold;">${heuresMO}h</td>
+    <td style="padding: 10px 8px; border-bottom: 1px solid #dee2e6; text-align: right; font-family: Arial;">${tauxHoraire.toFixed(2)} €</td>
+    <td style="padding: 10px 8px; border-bottom: 1px solid #dee2e6; text-align: right; font-weight: bold; font-family: Arial;">${totalMOHT.toFixed(2)} €</td>
+</tr>
+</tbody>
+</table>
+
+<!-- SECTION TOTAUX -->
+<table width="100%" style="margin-top: 20px;">
+<tr>
+<td width="55%">
+    <div style="background-color: #f8f9fa; padding: 15px;">
+        <div style="font-size: 9pt; font-weight: bold; color: #333; margin-bottom: 8px;">Informations TVA</div>
+        <div style="font-size: 9pt; color: #666;">
+            TVA Matériel: ${tvaMaterielRate}%<br>
+            TVA Main d'œuvre: ${tvaMORate}%
         </div>
     </div>
-    
-    <div class="footer">
-        ${selectedCompany.name} - ${selectedCompany.siret}<br>
-        Document généré le ${new Date().toLocaleDateString('fr-FR')} via MELEC-PRO
-    </div>
+</td>
+<td width="45%">
+    <table width="100%" style="border: 1px solid #dee2e6;">
+        <tr><td style="padding: 8px 15px; font-size: 10pt; color: #666;">Sous-total Matériel HT</td><td style="padding: 8px 15px; text-align: right; font-weight: bold;">${totalMaterielHT.toFixed(2)} €</td></tr>
+        <tr><td style="padding: 8px 15px; font-size: 10pt; color: #666;">Sous-total Main d'œuvre HT</td><td style="padding: 8px 15px; text-align: right; font-weight: bold;">${totalMOHT.toFixed(2)} €</td></tr>
+        <tr style="background-color: #f8f9fa;"><td style="padding: 8px 15px; font-size: 10pt; color: #666;">Total HT</td><td style="padding: 8px 15px; text-align: right; font-weight: bold;">${totalHT.toFixed(2)} €</td></tr>
+        <tr><td style="padding: 8px 15px; font-size: 10pt; color: #666;">TVA Matériel (${tvaMaterielRate}%)</td><td style="padding: 8px 15px; text-align: right;">${tvaMateriel.toFixed(2)} €</td></tr>
+        <tr><td style="padding: 8px 15px; font-size: 10pt; color: #666;">TVA Main d'œuvre (${tvaMORate}%)</td><td style="padding: 8px 15px; text-align: right;">${tvaMO.toFixed(2)} €</td></tr>
+        <tr style="background-color: #f8f9fa;"><td style="padding: 8px 15px; font-size: 10pt; color: #666;">Total TVA</td><td style="padding: 8px 15px; text-align: right; font-weight: bold;">${totalTVA.toFixed(2)} €</td></tr>
+        <tr style="background-color: ${companyColor};"><td style="padding: 12px 15px; font-size: 12pt; color: white; font-weight: bold;">TOTAL TTC</td><td style="padding: 12px 15px; text-align: right; font-size: 14pt; color: white; font-weight: bold;">${totalTTC.toFixed(2)} €</td></tr>
+    </table>
+</td>
+</tr>
+</table>
+
+<!-- PIED DE PAGE -->
+<div style="margin-top: 50px; padding-top: 20px; border-top: 2px solid #dee2e6;">
+    <table width="100%">
+    <tr>
+        <td style="font-size: 9pt; color: #666;">
+            <strong>Conditions de règlement:</strong> Paiement à 30 jours date de facture<br>
+            <strong>Pénalités de retard:</strong> 3 fois le taux d'intérêt légal<br>
+            <strong>Indemnité forfaitaire pour frais de recouvrement:</strong> 40 €
+        </td>
+        <td style="text-align: right; font-size: 9pt; color: #999;">
+            ${selectedCompany.name}<br>
+            SIRET: ${selectedCompany.siret}<br>
+            <em>Facture générée via MELEC-PRO</em>
+        </td>
+    </tr>
+    </table>
+</div>
+
 </body>
 </html>`;
                 
                 // Créer le blob et télécharger
                 const blob = new Blob([htmlContent], { type: 'application/msword' });
                 const filename = 'Facture_' + selectedCompany.name.replace(/[^a-z0-9]/gi, '_') + 
-                                '_' + prenom + '_' + nom + '.doc';
+                                '_' + prenom + '_' + nom + '_' + invoiceNum + '.doc';
                 saveAs(blob, filename);
                 
-                showAlert('✅ Facture générée avec succès ! Ouvrez-la avec Word.', 'success');
+                showAlert('✅ Facture professionnelle générée ! Ouvrez-la avec Word.', 'success');
             } catch (error) {
                 console.error('Erreur génération facture:', error);
                 showAlert('❌ Erreur: ' + error.message, 'warning');
@@ -1119,27 +1057,39 @@
                 const tvaMORate = parseFloat(document.getElementById('tvaMO').value);
                 const tvaMaterielRate = parseFloat(document.getElementById('tvaMateriel').value);
                 
-                // Calculs
+                // Calculs détaillés
                 const totalMaterielHT = materials.reduce((sum, m) => sum + (m.prix * m.quantity), 0);
                 const tvaMateriel = totalMaterielHT * (tvaMaterielRate / 100);
                 const totalMOHT = tauxHoraire * heuresMO;
                 const tvaMO = totalMOHT * (tvaMORate / 100);
-                const totalTTC = totalMaterielHT + tvaMateriel + totalMOHT + tvaMO;
+                const totalHT = totalMaterielHT + totalMOHT;
+                const totalTVA = tvaMateriel + tvaMO;
+                const totalTTC = totalHT + totalTVA;
                 
-                // Préparer les données pour Excel
+                // Numéro de facture
+                const invoiceNum = 'FAC-' + new Date().getFullYear() + '-' + Date.now().toString().slice(-6);
+                const invoiceDate = new Date().toLocaleDateString('fr-FR');
+                
+                // Préparer les données pour Excel avec structure professionnelle
                 const excelData = [
-                    ['FACTURE ÉLECTRIQUE - ' + selectedCompany.name],
+                    // En-tête entreprise
+                    [selectedCompany.name.toUpperCase()],
+                    [selectedCompany.address],
+                    ['SIRET: ' + selectedCompany.siret + ' | Tél: ' + selectedCompany.phone],
+                    ['Email: ' + selectedCompany.email],
                     [''],
-                    ['Entreprise:', selectedCompany.name],
-                    ['Adresse:', selectedCompany.address],
-                    ['SIRET:', selectedCompany.siret],
-                    ['Téléphone:', selectedCompany.phone],
+                    // Titre facture
+                    ['═══════════════════════════════════════════════════════════════════════════'],
+                    ['', '', 'FACTURE N° ' + invoiceNum],
+                    ['', '', 'Date: ' + invoiceDate],
+                    ['═══════════════════════════════════════════════════════════════════════════'],
                     [''],
-                    ['Client:', prenom + ' ' + nom],
-                    ['Date:', new Date().toLocaleDateString('fr-FR')],
-                    ['N° Facture:', 'FAC-' + Date.now().toString().slice(-8)],
+                    // Client
+                    ['CLIENT:', prenom + ' ' + nom],
                     [''],
-                    ['Désignation', 'Fabricant', 'Référence', 'Qté', 'P.U. HT (€)', 'Total HT (€)']
+                    // En-tête tableau articles
+                    ['DÉSIGNATION', 'FABRICANT', 'RÉFÉRENCE', 'QTÉ', 'P.U. HT (€)', 'TOTAL HT (€)'],
+                    ['───────────────────────────────────────────────────────────────────────────']
                 ];
                 
                 // Ajouter les matériaux
@@ -1150,17 +1100,42 @@
                         m.ref,
                         m.quantity,
                         m.prix,
-                        m.prix * m.quantity
+                        { t: 'n', v: m.prix * m.quantity, z: '#,##0.00 €' }
                     ]);
                 });
                 
-                // Ajouter les totaux
+                // Ligne main d'œuvre
+                excelData.push([
+                    'Main d\'œuvre - Installation électrique',
+                    '-',
+                    'MO-ELEC',
+                    heuresMO + 'h',
+                    tauxHoraire,
+                    { t: 'n', v: totalMOHT, z: '#,##0.00 €' }
+                ]);
+                
+                // Séparateur et totaux
+                excelData.push(['───────────────────────────────────────────────────────────────────────────']);
                 excelData.push(['']);
-                excelData.push(['Main d\'œuvre', heuresMO + ' h × ' + tauxHoraire.toFixed(2) + ' €', '', '', '', totalMOHT]);
-                excelData.push(['TVA Matériel', tvaMaterielRate + '%', '', '', '', tvaMateriel]);
-                excelData.push(['TVA Main d\'œuvre', tvaMORate + '%', '', '', '', tvaMO]);
+                excelData.push(['', '', '', '', 'Sous-total Matériel HT:', { t: 'n', v: totalMaterielHT, z: '#,##0.00 €' }]);
+                excelData.push(['', '', '', '', 'Sous-total Main d\'œuvre HT:', { t: 'n', v: totalMOHT, z: '#,##0.00 €' }]);
+                excelData.push(['', '', '', '', 'TOTAL HT:', { t: 'n', v: totalHT, z: '#,##0.00 €' }]);
                 excelData.push(['']);
-                excelData.push(['TOTAL TTC (€)', '', '', '', '', totalTTC]);
+                excelData.push(['', '', '', '', 'TVA Matériel (' + tvaMaterielRate + '%):', { t: 'n', v: tvaMateriel, z: '#,##0.00 €' }]);
+                excelData.push(['', '', '', '', 'TVA Main d\'œuvre (' + tvaMORate + '%):', { t: 'n', v: tvaMO, z: '#,##0.00 €' }]);
+                excelData.push(['', '', '', '', 'TOTAL TVA:', { t: 'n', v: totalTVA, z: '#,##0.00 €' }]);
+                excelData.push(['']);
+                excelData.push(['═══════════════════════════════════════════════════════════════════════════']);
+                excelData.push(['', '', '', '', 'TOTAL TTC:', { t: 'n', v: totalTTC, z: '#,##0.00 €' }]);
+                excelData.push(['═══════════════════════════════════════════════════════════════════════════']);
+                excelData.push(['']);
+                excelData.push(['']);
+                excelData.push(['CONDITIONS DE PAIEMENT']);
+                excelData.push(['• Paiement à 30 jours date de facture']);
+                excelData.push(['• Pénalités de retard: 3 fois le taux d\'intérêt légal']);
+                excelData.push(['• Indemnité forfaitaire pour frais de recouvrement: 40 €']);
+                excelData.push(['']);
+                excelData.push(['Document généré via MELEC-PRO']);
                 
                 // Créer le workbook
                 const wb = XLSX.utils.book_new();
@@ -1168,20 +1143,28 @@
                 
                 // Largeur des colonnes
                 ws['!cols'] = [
-                    {wch: 40}, // Désignation
-                    {wch: 20}, // Fabricant
-                    {wch: 18}, // Référence
+                    {wch: 45}, // Désignation
+                    {wch: 18}, // Fabricant
+                    {wch: 15}, // Référence
                     {wch: 8},  // Qté
-                    {wch: 12}, // P.U.
-                    {wch: 12}  // Total
+                    {wch: 22}, // P.U. / Labels
+                    {wch: 15}  // Total
+                ];
+                
+                // Fusionner les cellules du titre
+                ws['!merges'] = [
+                    {s: {r: 0, c: 0}, e: {r: 0, c: 5}}, // Nom entreprise
+                    {s: {r: 1, c: 0}, e: {r: 1, c: 5}}, // Adresse
+                    {s: {r: 2, c: 0}, e: {r: 2, c: 5}}, // SIRET
+                    {s: {r: 3, c: 0}, e: {r: 3, c: 5}}, // Email
                 ];
                 
                 XLSX.utils.book_append_sheet(wb, ws, 'Facture');
                 
-                const filename = 'Facture_' + selectedCompany.name.replace(/[^a-z0-9]/gi, '_') + '_' + prenom + '_' + nom + '.xlsx';
+                const filename = 'Facture_' + selectedCompany.name.replace(/[^a-z0-9]/gi, '_') + '_' + prenom + '_' + nom + '_' + invoiceNum + '.xlsx';
                 XLSX.writeFile(wb, filename);
                 
-                showAlert('✅ Fichier Excel généré avec succès !', 'success');
+                showAlert('✅ Fichier Excel professionnel généré !', 'success');
             } catch (error) {
                 console.error('Erreur Excel:', error);
                 showAlert('❌ Erreur lors de la génération Excel: ' + error.message, 'warning');
