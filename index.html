@@ -871,7 +871,6 @@
                 // Couleur de l'entreprise
                 const companyColor = selectedCompany.color || '#0066ff';
                 const companyColorLight = selectedCompany.colorLight || '#e6f0ff';
-                const companyInitials = selectedCompany.initials || selectedCompany.name.substring(0, 2).toUpperCase();
                 
                 // Générer le tableau des articles
                 const tableRows = materials.map((m, index) => `
@@ -913,21 +912,13 @@ table { border-collapse: collapse; }
 <table width="100%" style="margin-bottom: 30px;">
 <tr>
 <td width="70%" style="vertical-align: top;">
-    <table cellpadding="0" cellspacing="0">
-    <tr>
-        <td style="width: 60px; height: 60px; background-color: ${companyColor}; text-align: center; vertical-align: middle;">
-            <span style="color: white; font-size: 22pt; font-weight: bold; font-family: Arial;">${companyInitials}</span>
-        </td>
-        <td style="padding-left: 15px; vertical-align: top;">
-            <div style="font-size: 18pt; font-weight: bold; color: ${companyColor}; margin-bottom: 5px;">${selectedCompany.name}</div>
-            <div style="font-size: 9pt; color: #666; line-height: 1.6;">
-                ${selectedCompany.address}<br>
-                Tél: ${selectedCompany.phone} | Email: ${selectedCompany.email}<br>
-                SIRET: ${selectedCompany.siret}
-            </div>
-        </td>
-    </tr>
-    </table>
+    <div style="font-size: 20pt; font-weight: bold; color: ${companyColor}; margin-bottom: 8px;">${selectedCompany.name}</div>
+    <div style="font-size: 9pt; color: #666; line-height: 1.8;">
+        ${selectedCompany.address}<br>
+        Tél: ${selectedCompany.phone}<br>
+        Email: ${selectedCompany.email}<br>
+        SIRET: ${selectedCompany.siret}
+    </div>
 </td>
 <td width="30%" style="vertical-align: top; text-align: right;">
     <div style="background-color: ${companyColor}; color: white; padding: 15px 20px; display: inline-block;">
